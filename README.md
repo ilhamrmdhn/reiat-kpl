@@ -1,6 +1,6 @@
 # Reiat E-Commerce Platform
 
-Aplikasi web e-commerce untuk mendigitalisasi proses bisnis dari toko **Reiat**. Sistem ini dirancang untuk memfasilitasi dua alur transaksi secara terintegrasi dalam satu platform, yaitu:
+Aplikasi e-commerce untuk mendigitalisasi proses bisnis dari toko **Reiat**. Sistem ini dirancang untuk memfasilitasi dua alur transaksi secara terintegrasi dalam satu platform, yaitu:
 1. **Produk Fisik:** Manajemen penjualan dan pengiriman pakaian.
 2. **Produk Digital:** Sistem distribusi dan hak akses unduh untuk pola desain (*pattern*) baju.
 

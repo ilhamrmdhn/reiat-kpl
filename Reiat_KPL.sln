@@ -1,9 +1,45 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.37012.4 d17.14
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11519.219
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reiat.API", "Reiat.API\Reiat.API.csproj", "{0839AAE1-90BB-D720-D49A-D0A03F9F42DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reiat.GUI", "Reiat.GUI\Reiat.GUI.csproj", "{EBADB2C0-105A-2126-345C-BC414DE39ED3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reiat.Lib", "Reiat.Lib\Reiat.Lib.csproj", "{4B08295C-BE66-FC8C-4794-E3263C8EA675}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reiat.Main", "Reiat.Main\Reiat.Main.csproj", "{CA4FAA2B-48DC-C9D5-B89B-2FD3ACE3B720}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reiat.Test", "Reiat.Test\Reiat.Test.csproj", "{B34EBACB-652B-BF4A-775A-3BE9DA8A479F}"
+EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0839AAE1-90BB-D720-D49A-D0A03F9F42DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0839AAE1-90BB-D720-D49A-D0A03F9F42DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0839AAE1-90BB-D720-D49A-D0A03F9F42DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0839AAE1-90BB-D720-D49A-D0A03F9F42DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBADB2C0-105A-2126-345C-BC414DE39ED3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBADB2C0-105A-2126-345C-BC414DE39ED3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBADB2C0-105A-2126-345C-BC414DE39ED3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBADB2C0-105A-2126-345C-BC414DE39ED3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B08295C-BE66-FC8C-4794-E3263C8EA675}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B08295C-BE66-FC8C-4794-E3263C8EA675}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B08295C-BE66-FC8C-4794-E3263C8EA675}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B08295C-BE66-FC8C-4794-E3263C8EA675}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA4FAA2B-48DC-C9D5-B89B-2FD3ACE3B720}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA4FAA2B-48DC-C9D5-B89B-2FD3ACE3B720}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA4FAA2B-48DC-C9D5-B89B-2FD3ACE3B720}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA4FAA2B-48DC-C9D5-B89B-2FD3ACE3B720}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B34EBACB-652B-BF4A-775A-3BE9DA8A479F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B34EBACB-652B-BF4A-775A-3BE9DA8A479F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B34EBACB-652B-BF4A-775A-3BE9DA8A479F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B34EBACB-652B-BF4A-775A-3BE9DA8A479F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection

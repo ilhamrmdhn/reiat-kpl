@@ -1,25 +1,26 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Reiat.Lib.Reiat.Lib
+namespace Reiat.Lib
 {
-    // Teknik Runtime Configuration
     public class KonfigurasiAplikasi
     {
         public decimal Ppn { get; private set; }
 
         public KonfigurasiAplikasi()
         {
-            // Simulasi membaca dari file config saat runtime
-            Ppn = 0.11m; // 11%
+            // Teknik Runtime Configuration:
+            // Mengatur konfigurasi PPN ke 11% saat program diinisialisasi
+            Ppn = 0.11m;
         }
 
         public decimal HitungPpn(decimal nominal)
         {
-            if (nominal < 0) throw new ArgumentException("Nominal tidak boleh negatif."); // DbC
+            // Defensive Programming (DbC): Pre-condition
+            if (nominal < 0)
+            {
+                throw new ArgumentException("Nominal untuk dihitung PPN tidak boleh negatif.");
+            }
+
             return nominal * Ppn;
         }
     }

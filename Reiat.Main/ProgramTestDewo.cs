@@ -8,7 +8,7 @@ namespace Reiat.Main
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("=== [DEMO DEWO] E-COMMERCE REIAT ===");
+            Console.WriteLine("=== [DEMO] E-COMMERCE REIAT ===");
 
             var authMachine = new AutentikasiMachine();
             Console.WriteLine($"Status Awal: {authMachine.StateSaatIni}");
@@ -23,15 +23,15 @@ namespace Reiat.Main
                 // Demo Teknik Code Reuse & DbC
                 Console.WriteLine("\n[Proses Autentikasi]");
                 Console.Write("Masukkan Email: ");
-                string emailInput = "dewosalah.com"; // Simulasi input salah
+                string emailInput = "saleh.com"; 
                 Console.WriteLine(emailInput);
 
                 Console.WriteLine("> Memvalidasi email...");
-                ValidatorInput.ValidasiEmail(emailInput); // Ini akan melempar Exception
+                ValidatorInput.ValidasiEmail(emailInput); // 
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\n[GAGAL LOGIN - DbC Aktif]: {ex.Message}");
+                Console.WriteLine($"\n[GAGAL LOGIN]: {ex.Message}");
             }
 
             try
@@ -58,7 +58,7 @@ namespace Reiat.Main
         {
             var stopwatch = new Stopwatch();
 
-            Console.WriteLine("Menjalankan validasi format email sebanyak 1 Juta kali (Stress Test)...");
+            Console.WriteLine("Menjalankan validasi format email stress test");
 
             stopwatch.Start();
             for (int i = 0; i < 1000000; i++)
@@ -69,7 +69,7 @@ namespace Reiat.Main
             stopwatch.Stop();
 
             Console.WriteLine("Validasi Selesai.");
-            Console.WriteLine($"Waktu Eksekusi (Performance): {stopwatch.ElapsedMilliseconds} milidetik.");
+            Console.WriteLine($"Waktu Eksekusi (Performance): {stopwatch.ElapsedMilliseconds} ms.");
         }
     }
 }

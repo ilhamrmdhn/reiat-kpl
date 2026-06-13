@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Reiat.Lib;
 
@@ -56,8 +57,27 @@ namespace Reiat.Main
 
                 // --- ALUR BERLANJUT JIKA AUTH BERHASIL ---
 
-                // --- BAGIAN HUDA (Demo Generics) ---
-                Console.WriteLine("> Menyimpan data master (Teknik Generics)...");
+                // --- BAGIAN REJA (Demo Katalog & ResponAPI<T>) ---
+                Console.WriteLine("> Simulasi Call API untuk memuat katalog produk...");
+                var daftarProduk = new List<string>
+                {
+                    "1. [Fisik] Kemeja Reiat Basic - Rp 120.000",
+                    "2. [Digital] Pola Celana Cargo - Rp 45.000"
+                };
+
+                var responKatalog = new ResponAPI<List<string>>(true, "Berhasil memuat data katalog", daftarProduk);
+
+                Console.WriteLine($"[Respons API] Status : {(responKatalog.Sukses ? "SUKSES" : "GAGAL")}");
+                Console.WriteLine($"[Respons API] Pesan  : {responKatalog.Pesan}");
+                Console.WriteLine("[Respons API] Data   :");
+                foreach (var item in responKatalog.Data)
+                {
+                    Console.WriteLine($"  {item}");
+                }
+                Console.WriteLine();
+
+                // --- BAGIAN HUDA (Demo Generics Menyimpan Kategori) ---
+                Console.WriteLine("> Menyimpan data master kategori produk...");
                 penyimpananKategori.Simpan("Kategori: Pakaian Fisik");
                 penyimpananKategori.Simpan("Kategori: Pola Digital");
                 Console.WriteLine($"Tersimpan {penyimpananKategori.AmbilSemua().Count} kategori di PenyimpananLokal.\n");
@@ -66,7 +86,7 @@ namespace Reiat.Main
                 var baju = new PakaianFisik("Kemeja Reiat Basic", 120000, "M", 200);
                 var polaDigital = new PolaDigital("Pola Celana Cargo", 45000, "PDF", "https://reiat.com/dl/cargo");
 
-                Console.WriteLine("> Menambahkan produk ke keranjang...");
+                Console.WriteLine("> User menambahkan produk dari katalog ke keranjang...");
                 keranjang.TambahProduk(baju);
                 keranjang.TambahProduk(polaDigital);
 
@@ -75,7 +95,7 @@ namespace Reiat.Main
                 Console.WriteLine($"Subtotal Harga: Rp {subtotal:N0}\n");
 
                 // --- BAGIAN HUDA (Table-Driven Kalkulator Diskon) ---
-                Console.WriteLine("> Memproses Kalkulator Diskon (Teknik Table-driven)...");
+                Console.WriteLine("> Memproses Kalkulator Diskon...");
                 string promo = "REIATBARU";
                 decimal diskon = kalkulator.DapatkanDiskon(promo, subtotal);
                 decimal totalSetelahDiskon = subtotal - diskon;
@@ -88,7 +108,6 @@ namespace Reiat.Main
                 machine.LanjutKeCheckout();
                 Console.WriteLine($"-> Berpindah ke: {machine.StateSaatIni}");
 
-                // Pajak dihitung dari harga yang sudah didiskon
                 decimal pajak = config.HitungPpn(totalSetelahDiskon);
                 decimal grandTotal = totalSetelahDiskon + pajak;
 
@@ -102,17 +121,29 @@ namespace Reiat.Main
                 machine.SelesaikanPesanan();
                 Console.WriteLine($"-> Berpindah ke: {machine.StateSaatIni}\n");
 
-                // --- TEST DbC HUDA ---
-                Console.WriteLine("> [Test DbC] Mencoba kode promo yang tidak ada di tabel...");
+                // --- TEST DbC GABUNGAN (Diuji di akhir agar tidak merusak demo utama) ---
+                Console.WriteLine("--- MENGUJI PERTAHANAN SISTEM (DbC) ---");
+                
+                Console.WriteLine("> [Test DbC Huda] Mencoba kode promo yang tidak ada...");
                 kalkulator.DapatkanDiskon("CINTAREIAT", subtotal);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Terjadi Kesalahan (DbC Aktif): {ex.Message}");
+                Console.WriteLine($"Terjadi Kesalahan (DbC Diskon Aktif): {ex.Message}");
+            }
+
+            try 
+            {
+                Console.WriteLine("\n> [Test DbC Reja] Memaksa sistem API mengembalikan data NULL...");
+                var responError = new ResponAPI<string>(true, "Berhasil", null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Terjadi Kesalahan (DbC API Aktif): {ex.Message}");
             }
 
             // Menjalankan Performance Testing Gabungan
-            Console.WriteLine("\n=== MENJALANKAN PERFORMANCE TESTING ===");
+            Console.WriteLine("\n=== MENJALANKAN PERFORMANCE TESTING (SELURUH MODUL) ===");
             JalankanPerformanceTest();
         }
 
@@ -120,8 +151,8 @@ namespace Reiat.Main
         {
             var stopwatch = new Stopwatch();
 
-            // --- Performance Test Bagian Ilham ---
-            Console.WriteLine("\n[TEST ILHAM] Menyiapkan 1 Juta data dummy produk untuk dihitung...");
+            // [TEST ILHAM]
+            Console.WriteLine("\n[1] Menyiapkan 1 Juta data dummy produk untuk dihitung...");
             var keranjangTest = new KeranjangBelanja();
             for (int i = 0; i < 1000000; i++)
             {
@@ -131,14 +162,11 @@ namespace Reiat.Main
             stopwatch.Start();
             decimal total = keranjangTest.HitungTotalHarga();
             stopwatch.Stop();
-
-            Console.WriteLine($"Total Harga Terkalkulasi: Rp {total:N0}");
-            Console.WriteLine($"Waktu Eksekusi Keranjang: {stopwatch.ElapsedMilliseconds} milidetik.");
-
+            Console.WriteLine($"Waktu Eksekusi Keranjang (Ilham): {stopwatch.ElapsedMilliseconds} milidetik.");
             stopwatch.Reset();
 
-            // --- Performance Test Bagian Aul ---
-            Console.WriteLine("\n[TEST AUL] Menjalankan kalkulasi PPN sebanyak 1 Juta kali (Simulasi Load Config)...");
+            // [TEST AUL]
+            Console.WriteLine("\n[2] Menjalankan kalkulasi PPN sebanyak 1 Juta kali...");
             var configTest = new KonfigurasiAplikasi();
             decimal totalPajakSintetis = 0;
 
@@ -148,14 +176,11 @@ namespace Reiat.Main
                 totalPajakSintetis += configTest.HitungPpn(100m);
             }
             stopwatch.Stop();
-
-            Console.WriteLine("Kalkulasi PPN Selesai.");
-            Console.WriteLine($"Waktu Eksekusi PPN: {stopwatch.ElapsedMilliseconds} milidetik.");
-
+            Console.WriteLine($"Waktu Eksekusi PPN (Aul): {stopwatch.ElapsedMilliseconds} milidetik.");
             stopwatch.Reset();
 
-            // --- Performance Test Bagian Huda ---
-            Console.WriteLine("\n[TEST HUDA] Menyimpan 1 Juta data angka ke dalam PenyimpananLokal<T>...");
+            // [TEST HUDA]
+            Console.WriteLine("\n[3] Menyimpan 1 Juta data ke dalam PenyimpananLokal<T>...");
             var penyimpananTest = new PenyimpananLokal<int>();
 
             stopwatch.Start();
@@ -164,25 +189,29 @@ namespace Reiat.Main
                 penyimpananTest.Simpan(i);
             }
             stopwatch.Stop();
-
-            Console.WriteLine($"Data berhasil disimpan: {penyimpananTest.AmbilSemua().Count} item.");
-            Console.WriteLine($"Waktu Eksekusi Generics: {stopwatch.ElapsedMilliseconds} milidetik.");
-
+            Console.WriteLine($"Waktu Eksekusi Generics (Huda): {stopwatch.ElapsedMilliseconds} milidetik.");
             stopwatch.Reset();
 
-            // --- Performance Test Bagian Dewo ---
-            Console.WriteLine("\n[TEST DEWO] Menjalankan validasi format email sebanyak 1 Juta kali (Stress Test)...");
-
+            // [TEST DEWO]
+            Console.WriteLine("\n[4] Menjalankan validasi format email sebanyak 1 Juta kali...");
             stopwatch.Start();
             for (int i = 0; i < 1000000; i++)
             {
-                // Eksekusi berulang fungsi statis untuk mengukur beban string manipulation
                 ValidatorInput.ValidasiEmail("test@domain.com");
             }
             stopwatch.Stop();
+            Console.WriteLine($"Waktu Eksekusi Validasi (Dewo): {stopwatch.ElapsedMilliseconds} milidetik.");
+            stopwatch.Reset();
 
-            Console.WriteLine("Validasi Selesai.");
-            Console.WriteLine($"Waktu Eksekusi Validasi Email: {stopwatch.ElapsedMilliseconds} milidetik.");
+            // [TEST REJA]
+            Console.WriteLine("\n[5] Menjalankan wrapping ResponAPI<T> sebanyak 1 Juta kali...");
+            stopwatch.Start();
+            for (int i = 0; i < 1000000; i++)
+            {
+                var responSintetis = new ResponAPI<string>(true, "OK", "Data Dummy");
+            }
+            stopwatch.Stop();
+            Console.WriteLine($"Waktu Eksekusi Wrapper API (Reja): {stopwatch.ElapsedMilliseconds} milidetik.");
         }
     }
 }

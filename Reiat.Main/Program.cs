@@ -18,12 +18,44 @@ namespace Reiat.Main
             var keranjang = new KeranjangBelanja();
             var kalkulator = new KalkulatorDiskon();
             var penyimpananKategori = new PenyimpananLokal<string>();
+            var authMachine = new AutentikasiMachine();
 
             Console.WriteLine($"[Config] PPN saat ini dibaca sebesar: {config.Ppn * 100}%");
-            Console.WriteLine($"[State] Status Awal Pesanan: {machine.StateSaatIni}\n");
+            Console.WriteLine($"[State]  Status Awal Login  : {authMachine.StateSaatIni}");
+            Console.WriteLine($"[State]  Status Awal Pesanan: {machine.StateSaatIni}\n");
+
+            // --- BAGIAN DEWO (Sistem Autentikasi & Validasi Input) ---
+            try
+            {
+                Console.WriteLine("> User mencoba checkout/akses platform...");
+                authMachine.TriggerLogin();
+                Console.WriteLine($"-> Sistem meminta login. Status berubah: {authMachine.StateSaatIni}");
+
+                Console.WriteLine("\n[Proses Autentikasi]");
+                Console.Write("Masukkan Email: ");
+                string emailInput = "dewosalah.com"; // Simulasi input salah
+                Console.WriteLine(emailInput);
+
+                Console.WriteLine("> Memvalidasi email...");
+                ValidatorInput.ValidasiEmail(emailInput); // Melempar Exception
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n[GAGAL LOGIN - DbC Aktif]: {ex.Message}");
+            }
 
             try
             {
+                // Simulasi perbaikan input email yang benar
+                Console.WriteLine("\n> Mengulang input email yang benar...");
+                ValidatorInput.ValidasiEmail("dewo@telkom.edu");
+                Console.WriteLine("[Validasi Lolos] Email benar.");
+
+                authMachine.SuksesLogin();
+                Console.WriteLine($"-> Login Sukses! Status berubah: {authMachine.StateSaatIni}\n");
+
+                // --- ALUR BERLANJUT JIKA AUTH BERHASIL ---
+
                 // --- BAGIAN HUDA (Demo Generics) ---
                 Console.WriteLine("> Menyimpan data master (Teknik Generics)...");
                 penyimpananKategori.Simpan("Kategori: Pakaian Fisik");
@@ -70,7 +102,7 @@ namespace Reiat.Main
                 machine.SelesaikanPesanan();
                 Console.WriteLine($"-> Berpindah ke: {machine.StateSaatIni}\n");
 
-                // --- TEST DbC HUDA (Sengaja ditaruh di akhir agar demo utama selesai dulu) ---
+                // --- TEST DbC HUDA ---
                 Console.WriteLine("> [Test DbC] Mencoba kode promo yang tidak ada di tabel...");
                 kalkulator.DapatkanDiskon("CINTAREIAT", subtotal);
             }
@@ -135,6 +167,22 @@ namespace Reiat.Main
 
             Console.WriteLine($"Data berhasil disimpan: {penyimpananTest.AmbilSemua().Count} item.");
             Console.WriteLine($"Waktu Eksekusi Generics: {stopwatch.ElapsedMilliseconds} milidetik.");
+
+            stopwatch.Reset();
+
+            // --- Performance Test Bagian Dewo ---
+            Console.WriteLine("\n[TEST DEWO] Menjalankan validasi format email sebanyak 1 Juta kali (Stress Test)...");
+
+            stopwatch.Start();
+            for (int i = 0; i < 1000000; i++)
+            {
+                // Eksekusi berulang fungsi statis untuk mengukur beban string manipulation
+                ValidatorInput.ValidasiEmail("test@domain.com");
+            }
+            stopwatch.Stop();
+
+            Console.WriteLine("Validasi Selesai.");
+            Console.WriteLine($"Waktu Eksekusi Validasi Email: {stopwatch.ElapsedMilliseconds} milidetik.");
         }
     }
 }

@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text.Json;
 using Reiat.Lib;
+using Reiat.API.Controllers;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Reiat.Main
 {
@@ -19,7 +22,7 @@ namespace Reiat.Main
 
             // Variabel bantu untuk menyimpan state interaktif & Hak Akses
             string userEmail = "";
-            string userRole = "Guest"; // Bisa berisi: Guest, Customer, Admin
+            string userRole = "Guest";
             string promoDipakai = "";
             decimal diskonDidapat = 0;
             bool sudahBayar = false;
@@ -37,13 +40,11 @@ namespace Reiat.Main
                 Console.WriteLine("======================================================");
                 Console.WriteLine($"[Akses Role  ]: {userRole} {(string.IsNullOrEmpty(userEmail) ? "" : $"({userEmail})")}");
 
-                // Konversi tampilan status Automata agar lebih rapi di CLI
                 string authDisplay = (authMachine.StateSaatIni.ToString() == "Authenticated") ? "AUTHENTICATED" : "UNAUTHENTICATED";
                 Console.WriteLine($"[Status Auth ]: {authDisplay}");
 
                 Console.WriteLine($"[Status Order]: {machine.StateSaatIni}");
 
-                // Info keranjang & promo disembunyikan jika yang login adalah Admin
                 if (userRole != "Admin")
                 {
                     Console.WriteLine($"[Keranjang   ]: {keranjang.LihatKeranjang().Count} Item");
@@ -57,7 +58,7 @@ namespace Reiat.Main
                 Console.WriteLine("4. Lihat Isi Keranjang Belanja       (Ilham)");
                 Console.WriteLine("5. Klaim Kode Promo Diskon           (Huda)");
                 Console.WriteLine("6. Kelola Master Kategori - Generics (Huda) [ADMIN ONLY]");
-                Console.WriteLine("7. Proses Checkout & Pembayaran      (Aul)");
+                Console.WriteLine("7. Proses Checkout & Pembayaran      (Aul & Ilham)");
                 Console.WriteLine("8. Jalankan Performance Testing      (Semua)");
                 Console.WriteLine("0. Keluar");
                 Console.WriteLine("======================================================");
@@ -80,44 +81,34 @@ namespace Reiat.Main
                             authMachine.TriggerLogin();
                             Console.WriteLine("(Gunakan email 'admin@reiat.com' & sandi 'admin123' untuk akses Admin)");
 
-                            // Input & Validasi Email
                             Console.Write("Masukkan Email Anda : ");
                             string inputEmail = Console.ReadLine();
-                            ValidatorInput.ValidasiEmail(inputEmail); // Validasi DbC Email
+                            ValidatorInput.ValidasiEmail(inputEmail);
 
-                            // Input & Validasi Password
                             Console.Write("Masukkan Password   : ");
                             string inputPassword = Console.ReadLine();
-                            ValidatorInput.ValidasiPassword(inputPassword); // Validasi DbC Password
+                            ValidatorInput.ValidasiPassword(inputPassword);
 
                             userEmail = inputEmail;
 
-                            // Penentuan Role (RBAC) berdasarkan kredensial
                             if (userEmail == "admin@reiat.com")
                             {
                                 if (inputPassword == "admin123")
-                                {
                                     userRole = "Admin";
-                                }
                                 else
-                                {
                                     throw new Exception("Password Admin salah! Akses ditolak.");
-                                }
                             }
                             else
                             {
-                                // Selain admin@reiat.com otomatis menjadi Customer
                                 userRole = "Customer";
                             }
 
-                            // Jika lolos semua, mesin automata berpindah ke state sukses
                             authMachine.SuksesLogin();
                             Console.WriteLine($"\n[SUKSES] Login berhasil! Anda masuk sebagai: {userRole}");
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"\n[GAGAL LOGIN - DbC Menolak]: {ex.Message}");
-                            // Reset state Automata kembali ke awal jika gagal validasi
                             authMachine = new AutentikasiMachine();
                             userEmail = "";
                             userRole = "Guest";
@@ -126,20 +117,41 @@ namespace Reiat.Main
 
                     case "2": // --- BAGIAN REJA (Katalog & ResponAPI<T>) ---
                         Console.WriteLine("> Memanggil API Katalog Produk...");
-                        var daftarProduk = new List<string>
+                        try
                         {
-                            "1. [Fisik] Kemeja Reiat Basic - Rp 120.000",
-                            "2. [Digital] Pola Celana Cargo - Rp 45.000"
-                        };
+                            var katalogController = new KatalogController();
+                            var responIActionResult = katalogController.GetKatalog();
 
-                        var responKatalog = new ResponAPI<List<string>>(true, "Berhasil memuat data katalog", daftarProduk);
+                            // Ekstrak data dari IActionResult Ok() menggunakan JSON Parsing
+                            if (responIActionResult is OkObjectResult okResult)
+                            {
+                                string jsonString = JsonSerializer.Serialize(okResult.Value);
+                                var dataApi = JsonDocument.Parse(jsonString).RootElement;
 
-                        Console.WriteLine($"[API Status] : {(responKatalog.Sukses ? "SUKSES" : "GAGAL")}");
-                        Console.WriteLine($"[API Message]: {responKatalog.Pesan}");
-                        Console.WriteLine("[Katalog Tersedia]:");
-                        foreach (var item in responKatalog.Data)
+                                bool isSukses = dataApi.GetProperty("Sukses").GetBoolean();
+                                Console.WriteLine($"[API Status] : {(isSukses ? "SUKSES" : "GAGAL")}");
+                                Console.WriteLine($"[API Message]: {dataApi.GetProperty("Pesan").GetString()}");
+                                Console.WriteLine("[Katalog Tersedia]:");
+
+                                // Looping untuk membaca isi array Data dari JSON
+                                foreach (var item in dataApi.GetProperty("Data").EnumerateArray())
+                                {
+                                    int id = item.GetProperty("Id").GetInt32();
+                                    string tipe = item.GetProperty("Tipe").GetString();
+                                    string nama = item.GetProperty("Nama").GetString();
+                                    decimal harga = item.GetProperty("Harga").GetDecimal();
+
+                                    Console.WriteLine($"  {id}. [{tipe}] {nama} - Rp {harga:N0}");
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine("Gagal memuat API: Respons bukan Ok (200).");
+                            }
+                        }
+                        catch (Exception ex)
                         {
-                            Console.WriteLine($"  {item}");
+                            Console.WriteLine($"[SYSTEM ERROR] Gagal memanggil API: {ex.Message}");
                         }
                         break;
 
@@ -151,7 +163,7 @@ namespace Reiat.Main
                         }
 
                         Console.WriteLine("Pilih produk yang ingin ditambahkan:");
-                        Console.WriteLine("1. Kemeja Reiat Basic (Rp 120.000)");
+                        Console.WriteLine("1. Kemeja Reiat Basic (Rp 150.000)");
                         Console.WriteLine("2. Pola Celana Cargo (Rp 45.000)");
                         Console.Write("Pilihan Anda: ");
                         string pProduk = Console.ReadLine();
@@ -160,7 +172,7 @@ namespace Reiat.Main
                         {
                             if (pProduk == "1")
                             {
-                                keranjang.TambahProduk(new PakaianFisik("Kemeja Reiat Basic", 120000, "M", 200));
+                                keranjang.TambahProduk(new PakaianFisik("Kemeja Reiat Basic", 150000, "M", 200));
                                 Console.WriteLine("\n[SUKSES] Kemeja Reiat Basic dimasukkan ke keranjang.");
                             }
                             else if (pProduk == "2")
@@ -196,7 +208,6 @@ namespace Reiat.Main
                         Console.WriteLine("[Isi Keranjang Belanja Anda]:");
                         foreach (var prod in listKeranjang)
                         {
-                            // Pastikan pemanggilan .Nama sudah sesuai dengan class Produk buatanmu
                             Console.WriteLine($"- {prod.Nama} (Rp {prod.Harga:N0})");
                         }
                         Console.WriteLine($"\nSubtotal Harga: Rp {keranjang.HitungTotalHarga():N0}");
@@ -256,7 +267,7 @@ namespace Reiat.Main
                         }
                         break;
 
-                    case "7": // --- BAGIAN AUL (Checkout & Perhitungan PPN) ---
+                    case "7": // --- BAGIAN AUL & ILHAM (Checkout, Ongkir, PPN) ---
                         if (userRole != "Customer")
                         {
                             Console.WriteLine("[AKSES DITOLAK] Anda harus login sebagai Customer untuk melakukan checkout.");
@@ -278,16 +289,48 @@ namespace Reiat.Main
                             machine.LanjutKeCheckout();
                             Console.WriteLine($"[State] Status berubah menjadi: {machine.StateSaatIni}\n");
 
+                            // --- MENGAMBIL DATA ONGKIR (ILHAM) ---
+                            Console.WriteLine("> Memanggil API OngkirController untuk menghitung biaya kirim...");
+                            Console.Write("  Masukkan Kota Tujuan Pengiriman: ");
+                            string kotaTujuan = Console.ReadLine();
+
+                            double beratTotalGram = 1000;
+                            Console.WriteLine($"  [Info] Berat barang diasumsikan {beratTotalGram} gram.");
+
+                            var ongkirController = new OngkirController();
+                            var responOngkir = ongkirController.CekOngkir(kotaTujuan, beratTotalGram);
+
+                            decimal ongkir = 0;
+
+                            // Membaca hasil kembalian JSON agar properti Anonymous Object tidak error
+                            if (responOngkir is OkObjectResult okOngkir)
+                            {
+                                string jsonString = JsonSerializer.Serialize(okOngkir.Value);
+                                var dataOngkir = JsonDocument.Parse(jsonString).RootElement;
+
+                                ongkir = dataOngkir.GetProperty("TotalBiayaKirim").GetDecimal();
+                                string namaTujuan = dataOngkir.GetProperty("Tujuan").GetString();
+
+                                Console.WriteLine($"  [API SUKSES] Biaya kirim ke {namaTujuan} = Rp {ongkir:N0}\n");
+                            }
+                            else if (responOngkir is BadRequestObjectResult badRequestOngkir)
+                            {
+                                // Memicu tangkapan DbC yang dilempar dari API
+                                throw new Exception($"Validasi API Ditolak - {badRequestOngkir.Value}");
+                            }
+
+                            // --- MENGHITUNG FINAL ---
                             decimal subtotalAkhir = keranjang.HitungTotalHarga();
                             decimal setelahDiskon = subtotalAkhir - diskonDidapat;
                             decimal pajak = config.HitungPpn(setelahDiskon);
-                            decimal grandTotal = setelahDiskon + pajak;
+                            decimal grandTotal = setelahDiskon + pajak + ongkir;
 
                             Console.WriteLine("============= NOTA PEMBAYARAN =============");
                             Console.WriteLine($"Subtotal Belanja : Rp {subtotalAkhir:N0}");
-                            Console.WriteLine($"Potongan Diskon  : Rp {diskonDidapat:N0}");
+                            Console.WriteLine($"Potongan Diskon  : -Rp {diskonDidapat:N0}");
                             Console.WriteLine($"Harga Setelah Disc: Rp {setelahDiskon:N0}");
                             Console.WriteLine($"PPN (11%)        : Rp {pajak:N0}");
+                            Console.WriteLine($"Ongkos Kirim     : Rp {ongkir:N0}");
                             Console.WriteLine($"Grand Total      : Rp {grandTotal:N0}");
                             Console.WriteLine("===========================================");
 
@@ -299,13 +342,13 @@ namespace Reiat.Main
 
                             machine.SelesaikanPesanan();
                             Console.WriteLine($"-> Berpindah ke: {machine.StateSaatIni}");
-                            Console.WriteLine("\n[SUKSES] Terima kasih telah berbelanja di Reiat clothing!");
+                            Console.WriteLine("\n[SUKSES] Terima kasih telah berbelanja di platform Reiat!");
 
                             sudahBayar = true;
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Gagal checkout: {ex.Message}");
+                            Console.WriteLine($"\nGagal checkout: {ex.Message}");
                         }
                         break;
 

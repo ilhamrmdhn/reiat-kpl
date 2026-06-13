@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Reiat.API\Reiat.API.csproj" />
     <ProjectReference Include="..\Reiat.Lib\Reiat.Lib.csproj" />
   </ItemGroup>
 

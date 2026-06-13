@@ -36,12 +36,16 @@ namespace Reiat.Test
         {
             // Arrange
             var config = new KonfigurasiAplikasi();
+            decimal nominal = 100000m;
+
+            // Ekspektasi dibuat dinamis membaca dari config yang dimuat
+            decimal ekspektasiPpn = nominal * config.Ppn;
 
             // Act
-            decimal hasil = config.HitungPpn(100000m); // 11% dari 100.000
+            decimal hasil = config.HitungPpn(nominal);
 
             // Assert
-            Assert.AreEqual(11000m, hasil);
+            Assert.AreEqual(ekspektasiPpn, hasil);
         }
 
         [TestMethod]

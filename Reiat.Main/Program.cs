@@ -1,16 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Net.Http;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Reiat.Lib;
-using Reiat.API.Controllers;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Reiat.Main
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             // --- INI SIFATNYA GLOBAL (STATE DI-MAINTAIN SELAMA APLIKASI JALAN) ---
             var config = new KonfigurasiAplikasi();
@@ -19,6 +18,11 @@ namespace Reiat.Main
             var kalkulator = new KalkulatorDiskon();
             var penyimpananKategori = new PenyimpananLokal<string>();
             var authMachine = new AutentikasiMachine();
+
+            // Client untuk menembak API secara HTTP
+            using HttpClient client = new HttpClient();
+
+            string baseUrlApi = "https://localhost:7235";
 
             // Variabel bantu untuk menyimpan state interaktif & Hak Akses
             string userEmail = "";
@@ -30,6 +34,9 @@ namespace Reiat.Main
             // Memasukkan beberapa kategori bawaan ke penyimpanan generik di awal
             penyimpananKategori.Simpan("Kategori: Pakaian Fisik");
             penyimpananKategori.Simpan("Kategori: Pola Digital");
+
+            // Konfigurasi agar pembacaan JSON tidak terpaku huruf besar/kecil
+            var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
             bool running = true;
             while (running)
@@ -59,10 +66,9 @@ namespace Reiat.Main
                 Console.WriteLine("5. Klaim Kode Promo Diskon           (Huda)");
                 Console.WriteLine("6. Kelola Master Kategori - Generics (Huda) [ADMIN ONLY]");
                 Console.WriteLine("7. Proses Checkout & Pembayaran      (Aul & Ilham)");
-                Console.WriteLine("8. Jalankan Performance Testing      (Semua)");
                 Console.WriteLine("0. Keluar");
                 Console.WriteLine("======================================================");
-                Console.Write("Pilih menu (0-8): ");
+                Console.Write("Pilih menu (0-7): ");
 
                 string pilihan = Console.ReadLine();
                 Console.WriteLine("\n------------------------------------------------------");
@@ -115,43 +121,48 @@ namespace Reiat.Main
                         }
                         break;
 
-                    case "2": // --- BAGIAN REJA (Katalog & ResponAPI<T>) ---
-                        Console.WriteLine("> Memanggil API Katalog Produk...");
+                    case "2": // --- BAGIAN REJA (Katalog & ResponAPI<T> VIA HTTP) ---
+                        Console.WriteLine("> Mengirim HTTP GET Request ke API Katalog...");
                         try
                         {
-                            var katalogController = new KatalogController();
-                            var responIActionResult = katalogController.GetKatalog();
+                            // Pemanggilan API
+                            HttpResponseMessage response = await client.GetAsync($"{baseUrlApi}/api/Katalog");
 
-                            // Ekstrak data dari IActionResult Ok() menggunakan JSON Parsing
-                            if (responIActionResult is OkObjectResult okResult)
+                            if (response.IsSuccessStatusCode)
                             {
-                                string jsonString = JsonSerializer.Serialize(okResult.Value);
-                                var dataApi = JsonDocument.Parse(jsonString).RootElement;
+                                string jsonResponse = await response.Content.ReadAsStringAsync();
 
-                                bool isSukses = dataApi.GetProperty("Sukses").GetBoolean();
+                                // Parse JSON (menggunakan huruf kecil sesuai standar web camelCase)
+                                using JsonDocument doc = JsonDocument.Parse(jsonResponse);
+                                var root = doc.RootElement;
+
+                                bool isSukses = root.GetProperty("sukses").GetBoolean();
                                 Console.WriteLine($"[API Status] : {(isSukses ? "SUKSES" : "GAGAL")}");
-                                Console.WriteLine($"[API Message]: {dataApi.GetProperty("Pesan").GetString()}");
+                                Console.WriteLine($"[API Message]: {root.GetProperty("pesan").GetString()}");
                                 Console.WriteLine("[Katalog Tersedia]:");
 
-                                // Looping untuk membaca isi array Data dari JSON
-                                foreach (var item in dataApi.GetProperty("Data").EnumerateArray())
+                                foreach (var item in root.GetProperty("data").EnumerateArray())
                                 {
-                                    int id = item.GetProperty("Id").GetInt32();
-                                    string tipe = item.GetProperty("Tipe").GetString();
-                                    string nama = item.GetProperty("Nama").GetString();
-                                    decimal harga = item.GetProperty("Harga").GetDecimal();
+                                    int id = item.GetProperty("id").GetInt32();
+                                    string tipe = item.GetProperty("tipe").GetString();
+                                    string nama = item.GetProperty("nama").GetString();
+                                    decimal harga = item.GetProperty("harga").GetDecimal();
 
                                     Console.WriteLine($"  {id}. [{tipe}] {nama} - Rp {harga:N0}");
                                 }
                             }
                             else
                             {
-                                Console.WriteLine("Gagal memuat API: Respons bukan Ok (200).");
+                                Console.WriteLine($"[GAGAL] API mengembalikan status: {response.StatusCode}");
                             }
+                        }
+                        catch (HttpRequestException)
+                        {
+                            Console.WriteLine("[SYSTEM ERROR] Gagal terhubung ke API. Pastikan server Reiat.API sedang menyala (di-run)!");
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"[SYSTEM ERROR] Gagal memanggil API: {ex.Message}");
+                            Console.WriteLine($"[SYSTEM ERROR] Terjadi kesalahan: {ex.Message}");
                         }
                         break;
 
@@ -267,7 +278,7 @@ namespace Reiat.Main
                         }
                         break;
 
-                    case "7": // --- BAGIAN AUL & ILHAM (Checkout, Ongkir, PPN) ---
+                    case "7": // --- BAGIAN AUL & ILHAM (Checkout, Ongkir VIA HTTP, PPN) ---
                         if (userRole != "Customer")
                         {
                             Console.WriteLine("[AKSES DITOLAK] Anda harus login sebagai Customer untuk melakukan checkout.");
@@ -289,34 +300,46 @@ namespace Reiat.Main
                             machine.LanjutKeCheckout();
                             Console.WriteLine($"[State] Status berubah menjadi: {machine.StateSaatIni}\n");
 
-                            // --- MENGAMBIL DATA ONGKIR (ILHAM) ---
-                            Console.WriteLine("> Memanggil API OngkirController untuk menghitung biaya kirim...");
+                            // --- MENGAMBIL DATA ONGKIR VIA JARINGAN ---
+                            Console.WriteLine("> Mengirim HTTP GET Request ke API Ongkir...");
                             Console.Write("  Masukkan Kota Tujuan Pengiriman: ");
                             string kotaTujuan = Console.ReadLine();
-
                             double beratTotalGram = 1000;
                             Console.WriteLine($"  [Info] Berat barang diasumsikan {beratTotalGram} gram.");
 
-                            var ongkirController = new OngkirController();
-                            var responOngkir = ongkirController.CekOngkir(kotaTujuan, beratTotalGram);
-
                             decimal ongkir = 0;
 
-                            // Membaca hasil kembalian JSON agar properti Anonymous Object tidak error
-                            if (responOngkir is OkObjectResult okOngkir)
+                            try
                             {
-                                string jsonString = JsonSerializer.Serialize(okOngkir.Value);
-                                var dataOngkir = JsonDocument.Parse(jsonString).RootElement;
+                                // Menyusun URL Endpoint Ongkir
+                                string endpoint = $"{baseUrlApi}/api/Ongkir/cek?kotaTujuan={kotaTujuan}&beratGram={beratTotalGram}";
+                                HttpResponseMessage responseOngkir = await client.GetAsync(endpoint);
 
-                                ongkir = dataOngkir.GetProperty("TotalBiayaKirim").GetDecimal();
-                                string namaTujuan = dataOngkir.GetProperty("Tujuan").GetString();
+                                string jsonOngkir = await responseOngkir.Content.ReadAsStringAsync();
 
-                                Console.WriteLine($"  [API SUKSES] Biaya kirim ke {namaTujuan} = Rp {ongkir:N0}\n");
+                                if (responseOngkir.IsSuccessStatusCode)
+                                {
+                                    using JsonDocument doc = JsonDocument.Parse(jsonOngkir);
+                                    var root = doc.RootElement;
+
+                                    ongkir = root.GetProperty("totalBiayaKirim").GetDecimal();
+                                    string namaTujuan = root.GetProperty("tujuan").GetString();
+
+                                    Console.WriteLine($"  [API SUKSES] Biaya kirim ke {namaTujuan} = Rp {ongkir:N0}\n");
+                                }
+                                else if (responseOngkir.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                                {
+                                    // Melempar error sesuai dengan DbC di API
+                                    throw new Exception($"Validasi API Ditolak - {jsonOngkir}");
+                                }
+                                else
+                                {
+                                    throw new Exception($"Server mengembalikan status: {responseOngkir.StatusCode}");
+                                }
                             }
-                            else if (responOngkir is BadRequestObjectResult badRequestOngkir)
+                            catch (HttpRequestException)
                             {
-                                // Memicu tangkapan DbC yang dilempar dari API
-                                throw new Exception($"Validasi API Ditolak - {badRequestOngkir.Value}");
+                                throw new Exception("Gagal terhubung ke API. Pastikan server Reiat.API sedang berjalan.");
                             }
 
                             // --- MENGHITUNG FINAL ---
@@ -329,7 +352,7 @@ namespace Reiat.Main
                             Console.WriteLine($"Subtotal Belanja : Rp {subtotalAkhir:N0}");
                             Console.WriteLine($"Potongan Diskon  : -Rp {diskonDidapat:N0}");
                             Console.WriteLine($"Harga Setelah Disc: Rp {setelahDiskon:N0}");
-                            Console.WriteLine($"PPN (11%)        : Rp {pajak:N0}");
+                            Console.WriteLine($"PPN              : Rp {pajak:N0}");
                             Console.WriteLine($"Ongkos Kirim     : Rp {ongkir:N0}");
                             Console.WriteLine($"Grand Total      : Rp {grandTotal:N0}");
                             Console.WriteLine("===========================================");
@@ -352,18 +375,13 @@ namespace Reiat.Main
                         }
                         break;
 
-                    case "8": // --- TESTING PERFORMA GABUNGAN ---
-                        Console.WriteLine("Menjalankan simulasi stress-test 1 Juta data untuk semua modul...\n");
-                        JalankanPerformanceTest();
-                        break;
-
                     case "0":
                         Console.WriteLine("Keluar dari aplikasi. Sampai jumpa!");
                         running = false;
                         break;
 
                     default:
-                        Console.WriteLine("Pilihan menu salah. Silakan masukkan angka 0-8.");
+                        Console.WriteLine("Pilihan menu salah. Silakan masukkan angka 0-7.");
                         break;
                 }
 
@@ -373,70 +391,6 @@ namespace Reiat.Main
                     Console.ReadLine();
                 }
             }
-        }
-
-        static void JalankanPerformanceTest()
-        {
-            var stopwatch = new Stopwatch();
-
-            // [TEST ILHAM]
-            Console.WriteLine("[1] Menyiapkan 1 Juta data dummy produk untuk dihitung...");
-            var keranjangTest = new KeranjangBelanja();
-            for (int i = 0; i < 1000000; i++)
-            {
-                keranjangTest.TambahProduk(new PolaDigital($"Dummy {i}", 100, "PDF", "link"));
-            }
-            stopwatch.Start();
-            decimal total = keranjangTest.HitungTotalHarga();
-            stopwatch.Stop();
-            Console.WriteLine($"Waktu Eksekusi Keranjang (Ilham): {stopwatch.ElapsedMilliseconds} milidetik.");
-            stopwatch.Reset();
-
-            // [TEST AUL]
-            Console.WriteLine("\n[2] Menjalankan kalkulasi PPN sebanyak 1 Juta kali...");
-            var configTest = new KonfigurasiAplikasi();
-            decimal totalPajakSintetis = 0;
-            stopwatch.Start();
-            for (int i = 0; i < 1000000; i++)
-            {
-                totalPajakSintetis += configTest.HitungPpn(100m);
-            }
-            stopwatch.Stop();
-            Console.WriteLine($"Waktu Eksekusi PPN (Aul): {stopwatch.ElapsedMilliseconds} milidetik.");
-            stopwatch.Reset();
-
-            // [TEST HUDA]
-            Console.WriteLine("\n[3] Menyimpan 1 Juta data ke dalam PenyimpananLokal<T>...");
-            var penyimpananTest = new PenyimpananLokal<int>();
-            stopwatch.Start();
-            for (int i = 0; i < 1000000; i++)
-            {
-                penyimpananTest.Simpan(i);
-            }
-            stopwatch.Stop();
-            Console.WriteLine($"Waktu Eksekusi Generics (Huda): {stopwatch.ElapsedMilliseconds} milidetik.");
-            stopwatch.Reset();
-
-            // [TEST DEWO]
-            Console.WriteLine("\n[4] Menjalankan validasi format email sebanyak 1 Juta kali...");
-            stopwatch.Start();
-            for (int i = 0; i < 1000000; i++)
-            {
-                ValidatorInput.ValidasiEmail("test@domain.com");
-            }
-            stopwatch.Stop();
-            Console.WriteLine($"Waktu Eksekusi Validasi (Dewo): {stopwatch.ElapsedMilliseconds} milidetik.");
-            stopwatch.Reset();
-
-            // [TEST REJA]
-            Console.WriteLine("\n[5] Menjalankan wrapping ResponAPI<T> sebanyak 1 Juta kali...");
-            stopwatch.Start();
-            for (int i = 0; i < 1000000; i++)
-            {
-                var responSintetis = new ResponAPI<string>(true, "OK", "Data Dummy");
-            }
-            stopwatch.Stop();
-            Console.WriteLine($"Waktu Eksekusi Wrapper API (Reja): {stopwatch.ElapsedMilliseconds} milidetik.");
         }
     }
 }

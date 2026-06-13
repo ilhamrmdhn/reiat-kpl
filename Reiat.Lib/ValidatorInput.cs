@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 
 namespace Reiat.Lib
 {
@@ -13,9 +14,11 @@ namespace Reiat.Lib
                 throw new ArgumentException("Email tidak boleh kosong.");
             }
 
-            if (!email.Contains("@") || !email.Contains("."))
+            // Upgrade: Validasi menggunakan Regex standar industri
+            string polaEmail = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+            if (!Regex.IsMatch(email, polaEmail))
             {
-                throw new ArgumentException("Format email tidak valid! Harus mengandung karakter '@' dan domain.");
+                throw new ArgumentException("Format email tidak valid! Pastikan formatnya benar (contoh: user@domain.com).");
             }
         }
 

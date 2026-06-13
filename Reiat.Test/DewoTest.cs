@@ -18,7 +18,7 @@ namespace Reiat.Test
             Assert.AreEqual(AuthState.Authenticating, auth.StateSaatIni);
 
             auth.SuksesLogin();
-            Assert.AreEqual(AuthState.Customer, auth.StateSaatIni);
+            Assert.AreEqual(AuthState.Authenticated, auth.StateSaatIni);
         }
 
         [TestMethod]

@@ -2,7 +2,7 @@
 
 namespace Reiat.Lib
 {
-    public enum AuthState { Guest, Authenticating, Customer }
+    public enum AuthState { Unauthenticated, Authenticating, Authenticated }
 
     // Teknik Automata: State Machine untuk login
     public class AutentikasiMachine
@@ -11,13 +11,14 @@ namespace Reiat.Lib
 
         public AutentikasiMachine()
         {
-            StateSaatIni = AuthState.Guest; 
+            // State awal disesuaikan
+            StateSaatIni = AuthState.Unauthenticated;
         }
 
         public void TriggerLogin()
         {
             // Defensive Programming 
-            if (StateSaatIni != AuthState.Guest)
+            if (StateSaatIni != AuthState.Unauthenticated)
             {
                 throw new InvalidOperationException("User sudah login atau sedang dalam proses login.");
             }
@@ -32,7 +33,8 @@ namespace Reiat.Lib
                 throw new InvalidOperationException("Harus melewati tahap autentikasi (input email/password) terlebih dahulu.");
             }
 
-            StateSaatIni = AuthState.Customer;
+            // State akhir disesuaikan
+            StateSaatIni = AuthState.Authenticated;
         }
     }
 }

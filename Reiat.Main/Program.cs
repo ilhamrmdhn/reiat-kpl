@@ -12,18 +12,25 @@ namespace Reiat.Main
             Console.WriteLine("         E-COMMERCE REIAT - DEMO TUBES CLO 2");
             Console.WriteLine("======================================================\n");
 
-            // --- BAGIAN AUL (Konfigurasi & Automata) ---
+            // --- INISIALISASI MODUL ---
             var config = new KonfigurasiAplikasi();
-            Console.WriteLine($"[Config] PPN saat ini dibaca sebesar: {config.Ppn * 100}%\n");
-
             var machine = new StatusPesananMachine();
-            Console.WriteLine($"Status Awal Pesanan: {machine.StateSaatIni}\n");
-
-            // --- BAGIAN ILHAM (Keranjang Belanja) ---
             var keranjang = new KeranjangBelanja();
+            var kalkulator = new KalkulatorDiskon();
+            var penyimpananKategori = new PenyimpananLokal<string>();
+
+            Console.WriteLine($"[Config] PPN saat ini dibaca sebesar: {config.Ppn * 100}%");
+            Console.WriteLine($"[State] Status Awal Pesanan: {machine.StateSaatIni}\n");
 
             try
             {
+                // --- BAGIAN HUDA (Demo Generics) ---
+                Console.WriteLine("> Menyimpan data master (Teknik Generics)...");
+                penyimpananKategori.Simpan("Kategori: Pakaian Fisik");
+                penyimpananKategori.Simpan("Kategori: Pola Digital");
+                Console.WriteLine($"Tersimpan {penyimpananKategori.AmbilSemua().Count} kategori di PenyimpananLokal.\n");
+
+                // --- BAGIAN ILHAM (Keranjang Belanja) ---
                 var baju = new PakaianFisik("Kemeja Reiat Basic", 120000, "M", 200);
                 var polaDigital = new PolaDigital("Pola Celana Cargo", 45000, "PDF", "https://reiat.com/dl/cargo");
 
@@ -31,34 +38,48 @@ namespace Reiat.Main
                 keranjang.TambahProduk(baju);
                 keranjang.TambahProduk(polaDigital);
 
-                decimal totalBelanja = keranjang.HitungTotalHarga();
-                Console.WriteLine("\n[Ringkasan Pesanan Sementara]");
+                decimal subtotal = keranjang.HitungTotalHarga();
                 Console.WriteLine($"Total Item : {keranjang.LihatKeranjang().Count}");
-                Console.WriteLine($"Total Harga: Rp {totalBelanja:N0}\n");
+                Console.WriteLine($"Subtotal Harga: Rp {subtotal:N0}\n");
 
-                // --- MENGGABUNGKAN LOGIKA AUL & ILHAM ---
+                // --- BAGIAN HUDA (Table-Driven Kalkulator Diskon) ---
+                Console.WriteLine("> Memproses Kalkulator Diskon (Teknik Table-driven)...");
+                string promo = "REIATBARU";
+                decimal diskon = kalkulator.DapatkanDiskon(promo, subtotal);
+                decimal totalSetelahDiskon = subtotal - diskon;
+
+                Console.WriteLine($"Kode Promo Dipakai : {promo}");
+                Console.WriteLine($"Diskon Didapat     : Rp {diskon:N0}");
+                Console.WriteLine($"Subtotal Sementara : Rp {totalSetelahDiskon:N0}\n");
+
+                // --- BAGIAN AUL (Automata Status & Perhitungan PPN) ---
                 machine.LanjutKeCheckout();
                 Console.WriteLine($"-> Berpindah ke: {machine.StateSaatIni}");
 
-                decimal pajak = config.HitungPpn(totalBelanja);
+                // Pajak dihitung dari harga yang sudah didiskon
+                decimal pajak = config.HitungPpn(totalSetelahDiskon);
+                decimal grandTotal = totalSetelahDiskon + pajak;
 
-                Console.WriteLine($"\n[Kalkulasi Akhir]");
-                Console.WriteLine($"Tagihan Barang : Rp {totalBelanja:N0}");
-                Console.WriteLine($"PPN (11%)      : Rp {pajak:N0}");
-                Console.WriteLine($"Total Tagihan  : Rp {totalBelanja + pajak:N0}\n");
+                Console.WriteLine($"\n[Tagihan Akhir]");
+                Console.WriteLine($"PPN (11%)          : Rp {pajak:N0}");
+                Console.WriteLine($"Grand Total        : Rp {grandTotal:N0}\n");
 
                 machine.ProsesPembayaran();
                 Console.WriteLine($"-> Berpindah ke: {machine.StateSaatIni}");
 
                 machine.SelesaikanPesanan();
-                Console.WriteLine($"-> Berpindah ke: {machine.StateSaatIni}");
+                Console.WriteLine($"-> Berpindah ke: {machine.StateSaatIni}\n");
+
+                // --- TEST DbC HUDA (Sengaja ditaruh di akhir agar demo utama selesai dulu) ---
+                Console.WriteLine("> [Test DbC] Mencoba kode promo yang tidak ada di tabel...");
+                kalkulator.DapatkanDiskon("CINTAREIAT", subtotal);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Terjadi Kesalahan (DbC Aktif): {ex.Message}");
             }
 
-            // Menjalankan Performance Testing
+            // Menjalankan Performance Testing Gabungan
             Console.WriteLine("\n=== MENJALANKAN PERFORMANCE TESTING ===");
             JalankanPerformanceTest();
         }
@@ -75,7 +96,6 @@ namespace Reiat.Main
                 keranjangTest.TambahProduk(new PolaDigital($"Dummy {i}", 100, "PDF", "link"));
             }
 
-            Console.WriteLine("Mulai menghitung total harga...");
             stopwatch.Start();
             decimal total = keranjangTest.HitungTotalHarga();
             stopwatch.Stop();
@@ -83,7 +103,7 @@ namespace Reiat.Main
             Console.WriteLine($"Total Harga Terkalkulasi: Rp {total:N0}");
             Console.WriteLine($"Waktu Eksekusi Keranjang: {stopwatch.ElapsedMilliseconds} milidetik.");
 
-            stopwatch.Reset(); // Reset stopwatch untuk test berikutnya milik Aul
+            stopwatch.Reset();
 
             // --- Performance Test Bagian Aul ---
             Console.WriteLine("\n[TEST AUL] Menjalankan kalkulasi PPN sebanyak 1 Juta kali (Simulasi Load Config)...");
@@ -93,13 +113,28 @@ namespace Reiat.Main
             stopwatch.Start();
             for (int i = 0; i < 1000000; i++)
             {
-                // Menghitung pajak Rp 100 berulang kali untuk stress test memori
                 totalPajakSintetis += configTest.HitungPpn(100m);
             }
             stopwatch.Stop();
 
             Console.WriteLine("Kalkulasi PPN Selesai.");
             Console.WriteLine($"Waktu Eksekusi PPN: {stopwatch.ElapsedMilliseconds} milidetik.");
+
+            stopwatch.Reset();
+
+            // --- Performance Test Bagian Huda ---
+            Console.WriteLine("\n[TEST HUDA] Menyimpan 1 Juta data angka ke dalam PenyimpananLokal<T>...");
+            var penyimpananTest = new PenyimpananLokal<int>();
+
+            stopwatch.Start();
+            for (int i = 0; i < 1000000; i++)
+            {
+                penyimpananTest.Simpan(i);
+            }
+            stopwatch.Stop();
+
+            Console.WriteLine($"Data berhasil disimpan: {penyimpananTest.AmbilSemua().Count} item.");
+            Console.WriteLine($"Waktu Eksekusi Generics: {stopwatch.ElapsedMilliseconds} milidetik.");
         }
     }
 }
